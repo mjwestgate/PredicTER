@@ -7,7 +7,7 @@ This is a prototype of a shiny app to help users to estimate the time required t
 ```
 # install and load package
 library(shiny)
-library(shiny dashboard)
+library(shinydashboard)
 library(plotly)
 library(viridisLite)
 runGitHub("PredicTER", "mjwestgate")
