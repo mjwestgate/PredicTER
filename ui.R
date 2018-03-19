@@ -142,7 +142,7 @@ sidebar<-dashboardSidebar(
 		menuItem("Reporting", icon=icon("bullhorn"), expandedName="reporting", 	
 			br(),
 			splitLayout(
-				HTML("Number of days spent on<br>quantitative or qualitative synthesis"),
+				HTML("Number of days spent on<br>quant. or qual. synthesis"),
 				textInput(inputId="synthesis", label=NULL, value="15"),		
 				cellWidths=c("60%", "40%")
 			),
