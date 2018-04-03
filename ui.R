@@ -1,8 +1,12 @@
-header<- dashboardHeader(
+library(shinydashboard)
+library(shiny)
+library(plotly)
+
+header<- shinydashboard::dashboardHeader(
 	title=tags$a(tags$img(src="PredicTER_logo.png", width=250, height=40)),
 	titleWidth=350)
 	
-sidebar<-dashboardSidebar(
+sidebar<-shinydashboard::dashboardSidebar(
 	width=350,
 	sidebarMenu(
 		id="tabs",
@@ -165,7 +169,7 @@ sidebar<-dashboardSidebar(
 )
 
 			
-body<-dashboardBody(
+body<-shinydashboard::dashboardBody(
 
     tags$style(HTML("
 		.content-wrapper,
@@ -206,13 +210,13 @@ body<-dashboardBody(
 			# tableOutput('table')
 		# ), # checking only
 		box(width=8, title="Number of Days", solidHeader=TRUE, status="primary", 
-			plotlyOutput("plot_days", height=650)
+			plotly::plotlyOutput("plot_days", height=650)
 		),
 		box(width=4, title="Number of Articles", solidHeader=TRUE, status="primary", 
 			# tableOutput('table2')
-			plotlyOutput("plot_articles", height=650)
+			plotly::plotlyOutput("plot_articles", height=650)
 		)
 	)
 )
 
-ui<- dashboardPage(header, sidebar, body, title="PredicTER", skin="black")
+ui<- shinydashboard::dashboardPage(header, sidebar, body, title="PredicTER", skin="black")

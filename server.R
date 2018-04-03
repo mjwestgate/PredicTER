@@ -282,7 +282,7 @@ server<-function(input, output, session){
 		# output$table2<-renderTable(time_dframe)
 		
 		# draw plot 1 (time)
-		color_palette<-viridis(5, begin=0, end=0.9, direction=-1)
+		color_palette<-viridisLite::viridis(5, begin=0, end=0.9, direction=-1)
 		output$plot_days<-renderPlotly({
 			p<-plot_ly(
 				data = time_dframe,
