@@ -149,7 +149,8 @@ server<-function(input, output, session){
 			updateTextInput(session, "row2_title_percent", value="14.6")
 			updateTextInput(session, "row3_abstract_percent", value="25.0")
 			updateTextInput(session, "row4_retrieved_percent", value="131.1")
-			updateTextInput(session, "row5_fulltext_percent", value="23.0")			
+			updateTextInput(session, "row5_fulltext_percent", value="23.0")	
+			updateTextInput(session, "synthesis", value="15.0")			
 		}else{ # i.e. syst_map
 			updateTextInput(session, "n_search", value="34165")	
 			updateTextInput(session, "n_grey", value="22")
@@ -157,7 +158,8 @@ server<-function(input, output, session){
 			updateTextInput(session, "row2_title_percent", value="18.2")
 			updateTextInput(session, "row3_abstract_percent", value="24.9")
 			updateTextInput(session, "row4_retrieved_percent", value="109.6")
-			updateTextInput(session, "row5_fulltext_percent", value="37.6")		
+			updateTextInput(session, "row5_fulltext_percent", value="37.6")	
+			updateTextInput(session, "synthesis", value="0")		
 		}
 	})
 	
