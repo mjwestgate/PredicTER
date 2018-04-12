@@ -61,6 +61,12 @@ sidebar<-shinydashboard::dashboardSidebar(
 				textInput("n_grey_perday", label=NULL, "12"),
 				cellWidths=c("20%", "40%", "40%")
 			),
+			splitLayout(
+				HTML("Reference<br>Lists<br>Checked"),
+				textInput("n_bib", label=NULL, "10"),
+				# textInput("n_bib_perday", label=NULL, "12"),
+				cellWidths=c("20%", "40%")
+			),
 			br(),
 			h4("Further Information"),
 			splitLayout(
@@ -160,11 +166,16 @@ sidebar<-shinydashboard::dashboardSidebar(
 				textInput(inputId="comms", label=NULL, value="10"),		
 				cellWidths=c("60%", "40%")
 			),
+			splitLayout(
+				HTML("Number of days spent<br>in meetings"),
+				textInput(inputId="meetings", label=NULL, value="4"),		
+				cellWidths=c("60%", "40%")
+			),
 			actionLink("help_reporting", icon("question-circle"))
 		),
 		br(),
 		br(),
-		actionLink("about", "about PredicTER")	
+		actionLink("about", "About PredicTER")
 	) 
 )
 
@@ -199,6 +210,11 @@ body<-shinydashboard::dashboardBody(
 			border-right-color:#444444;
 			border-top-color:#444444;
 		}
+		.download_class{
+			background-color: #444444;
+			color: #e2e2e2;
+		} 
+		#view
 	")),
 	fluidRow(
 		infoBoxOutput("total_box"),
@@ -207,14 +223,20 @@ body<-shinydashboard::dashboardBody(
 	),
 	fluidRow(
 		# box(width=12, title="Data table", solidHeader=TRUE, status="primary", 
-			# tableOutput('table')
+			# tableOutput('table'),
+			# tableOutput('table2')
 		# ), # checking only
 		box(width=8, title="Number of Days", solidHeader=TRUE, status="primary", 
-			plotly::plotlyOutput("plot_days", height=650)
+			plotly::plotlyOutput("plot_days", height=650),
+			br(),
+			actionButton("view_data_1", label="View data", style="background-color: #444444; color: #e2e2e2;"),
+			downloadButton("download_table1", label="Download csv", class="download_class")
 		),
 		box(width=4, title="Number of Articles", solidHeader=TRUE, status="primary", 
-			# tableOutput('table2')
-			plotly::plotlyOutput("plot_articles", height=650)
+			plotly::plotlyOutput("plot_articles", height=650),
+			br(),
+			actionButton("view_data_2", label="View data", style="background-color: #444444; color: #e2e2e2;"),
+			downloadButton("download_table2", label="Download csv", class="download_class")
 		)
 	)
 )

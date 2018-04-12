@@ -20,7 +20,9 @@ server<-function(input, output, session){
 	show_data_stages<-reactiveValues(x=TRUE)
 	ca_value<-list(x="64.5")
 	ca_current_status<-list(x=FALSE)
-	# data_current_status<-list(x=FALSE)
+
+	# reactive values to store plot data and images
+	plot_data<-reactiveValues(p1=data.frame(x=0), p2=data.frame(x=0))
 	
  	# set defaults for when to show selector for critical appraisal stage
  	observeEvent(
@@ -42,7 +44,6 @@ server<-function(input, output, session){
 				)
 			)
 		}else{
-			# updateSelectInput(session, "include_ca", choices=c("No", "Yes"), selected="No")
 			removeUI(selector="#ca_selector")
 			ca_value$x<-"65.4"
 			if(ca_current_status$x){
@@ -50,9 +51,7 @@ server<-function(input, output, session){
 			}else{
 				show_ca_line$x<-TRUE
 			}
-			# if(data_current_status$x==FALSE){
 			show_data_stages$x<-TRUE
-			# }
 		}
 	})
 
@@ -104,34 +103,30 @@ server<-function(input, output, session){
 	observe({ 
 		 # ditto for data extraction and preparation (SRs only)
 		 if(show_data_stages$x){
-		 	# if(data_current_status==FALSE){
-			 	# data_current_status$x<-TRUE
-			    insertUI(
-			      selector = '#placeholder_SRs',
-			      ui = tags$div(
-					list(
-						splitLayout(
-							HTML("Data<br>extraction"),
-							textInput("row8_dataextract_nperday", label=NULL, "6.9"),
-							textInput("row8_dataextract_percent", label=NULL, "100.0"),
-							textInput("row8_dataextract_checked", label=NULL, "0"),	
-							cellWidths=c("25%", "25%", "25%", "25%")
-						),
-						splitLayout(
-							HTML("Data<br>preparation"),
-							textInput("row9_dataprep_nperday", label=NULL, "24"),
-							textInput("row9_dataprep_percent", label=NULL, "75.0"),
-							textInput("row9_dataprep_checked", label=NULL, "0"),	
-							cellWidths=c("25%", "25%", "25%", "25%")
-						)
+		    insertUI(
+		      selector = '#placeholder_SRs',
+		      ui = tags$div(
+				list(
+					splitLayout(
+						HTML("Data<br>extraction"),
+						textInput("row8_dataextract_nperday", label=NULL, "6.9"),
+						textInput("row8_dataextract_percent", label=NULL, "100.0"),
+						textInput("row8_dataextract_checked", label=NULL, "0"),	
+						cellWidths=c("25%", "25%", "25%", "25%")
 					),
-			        id = "data_stages"
-			      )
-			    )		
-			# } 	
+					splitLayout(
+						HTML("Data<br>preparation"),
+						textInput("row9_dataprep_nperday", label=NULL, "24"),
+						textInput("row9_dataprep_percent", label=NULL, "75.0"),
+						textInput("row9_dataprep_checked", label=NULL, "0"),	
+						cellWidths=c("25%", "25%", "25%", "25%")
+					)
+				),
+		        id = "data_stages"
+		      )
+		    )			
 		 }else{
 		 	removeUI(selector='#data_stages')
-		 	# data_current_status$x<-FALSE
 		 }
 	})
 	
@@ -154,8 +149,7 @@ server<-function(input, output, session){
 			updateTextInput(session, "row2_title_percent", value="14.6")
 			updateTextInput(session, "row3_abstract_percent", value="25.0")
 			updateTextInput(session, "row4_retrieved_percent", value="131.1")
-			updateTextInput(session, "row5_fulltext_percent", value="23.0")
-			# updateTextInput(session, "row6_metadata_percent", value="100.0")				
+			updateTextInput(session, "row5_fulltext_percent", value="23.0")			
 		}else{ # i.e. syst_map
 			updateTextInput(session, "n_search", value="34165")	
 			updateTextInput(session, "n_grey", value="22")
@@ -163,8 +157,7 @@ server<-function(input, output, session){
 			updateTextInput(session, "row2_title_percent", value="18.2")
 			updateTextInput(session, "row3_abstract_percent", value="24.9")
 			updateTextInput(session, "row4_retrieved_percent", value="109.6")
-			updateTextInput(session, "row5_fulltext_percent", value="37.6")
-			# updateTextInput(session, "row6_metadata_percent", value="100.0") # doesn't change			
+			updateTextInput(session, "row5_fulltext_percent", value="37.6")		
 		}
 	})
 	
@@ -181,7 +174,7 @@ server<-function(input, output, session){
 			"Appraised", "Data extracted", "Data prepared"),
 		stringsAsFactors=FALSE
 	)			
-			
+	
 	# calculate and plot summary values 
 	observe({
 		# look up relevant data using lapply
@@ -208,8 +201,9 @@ server<-function(input, output, session){
 			
 		# calculate number of articles, and time taken to process them
 		count_dframe$cumulative_percent <- cumprod(count_dframe$percent)
-		n_articles <- round(count_dframe$cumulative_percent * as.numeric(input$n_search), 0)
-		count_dframe$count_pre<-c(round(as.numeric(input$n_search), 0), n_articles[1:(length(n_articles)-1)])
+		n_initial <- as.numeric(input$n_search) # + (50 * as.numeric(input$n_bib))
+		n_articles <- round(count_dframe$cumulative_percent * n_initial, 0)
+		count_dframe$count_pre<-c(round(n_initial, 0), n_articles[1:(length(n_articles)-1)])
 		count_dframe$count_post<-n_articles
 		count_dframe$time_days <- (count_dframe$count_pre * count_dframe$checked) / count_dframe$nperday
 		count_dframe$time_days[1] <- as.numeric(input$unique_time)
@@ -231,8 +225,8 @@ server<-function(input, output, session){
 		time_dframe<-data.frame(
 			stage=c(
 				"Administration", "Planning time", "Protocol development", 
-				"Searching (academic)", "Searching (grey)",
-				"Synthesis", "Report writing", "Communication"),
+				"Searching (academic)", "Searching (grey)", "Checking bibliographies",
+				"Synthesis", "Report writing", "Communication", "Meetings"),
 			value=c(
 				0, 
 				as.numeric(input$planning),
@@ -240,9 +234,11 @@ server<-function(input, output, session){
 				as.numeric(input$n_databases) / as.numeric(input$n_db_perday),
 				(as.numeric(input$n_grey) / as.numeric(input$n_grey_perday)) + 
 					as.numeric(input$time_grey_add),
+				0,
 				as.numeric(input$synthesis),
 				as.numeric(input$report),
-				as.numeric(input$comms)			
+				as.numeric(input$comms),
+				as.numeric(input$meetings)		
 			),
 			stringsAsFactors=FALSE		
 		)
@@ -251,26 +247,30 @@ server<-function(input, output, session){
 		group_lookup<-data.frame(
 			stage=c(
 				"Administration", "Planning time", "Protocol development", 
-				"Searching (academic)", "Searching (grey)",
+				"Searching (academic)", "Searching (grey)", "Checking bibliographies",
 				"Removing duplicates", "Title screening", "Abstract screening", 
 				"Full text retrieval", "Full text screening", "Meta-data extraction",
 				"Critical appraisal", "Data extraction", "Data preparation",
-				"Synthesis", "Report writing", "Communication"),
-			group_order=c(rep(1, 3), rep(2, 3), rep(3, 4), rep(4, 4), rep(5, 3))		
+				"Synthesis", "Report writing", "Communication", "Meetings"),
+			group_order=c(rep(1, 3), rep(2, 4), rep(3, 4), rep(4, 4), rep(5, 4))		
 		)
 
 		# calculate which extra rows to add from count_dframe and insert to time_dframe
 		count_dframe_small<-count_dframe[, c("plot1_stage", "time_days")]
 		colnames(count_dframe_small)<-c("stage", "value")
 		time_dframe <- as.data.frame(rbind(
-			time_dframe[1:5,], 
+			time_dframe[1:6,], 
 			count_dframe_small, 
-			time_dframe[6:8, ]))
+			time_dframe[7:10, ]))
 		time_dframe$order<-c(1:nrow(time_dframe))
 		time_dframe$y<-factor(
 			c(nrow(time_dframe):1),
 			levels=c(1:nrow(time_dframe)),
 			labels=rev(time_dframe$stage))
+		# calculate time on checking abstracts
+		counts_duplicates<-as.numeric(input$n_bib) * 50 * c(1, 0.192)
+		time_dframe$value[6]<-sum(counts_duplicates / count_dframe$nperday[2:3])
+		# calculate administration time
 		time_dframe$value[1]<-sum(time_dframe$value) * as.numeric(input$pc_admin) * 0.01
 		time_dframe<-merge(time_dframe, group_lookup, by="stage", all=FALSE)
 		time_dframe<-time_dframe[order(time_dframe$order), ]
@@ -279,7 +279,10 @@ server<-function(input, output, session){
 			levels=c(1:5), 
 			labels=c("Planning", "Searching", "Screening", "DEAS", "Reporting"))
 		time_dframe$caption<-paste0(round(time_dframe$value, 1), " days")
-		# output$table2<-renderTable(time_dframe)
+		time_dframe_clean<-time_dframe[, c("stage", "group_factor", "value")]
+		colnames(time_dframe_clean)<-c("stage", "stage_group", "time_days")
+		plot_data$p1<-time_dframe_clean
+		# output$table2<-renderTable(plot_data$p1) # checking only
 		
 		# draw plot 1 (time)
 		color_palette<-viridisLite::viridis(5, begin=0, end=0.9, direction=-1)
@@ -310,8 +313,14 @@ server<-function(input, output, session){
 			levels=c(1:nrow(count_dframe)),
 			labels=rev(count_dframe$plot2_stage))
 		count_dframe$caption<-paste0("n = ", round(count_dframe$count_pre, 0))
-		# output$table<-renderTable(count_dframe) # for checking only
-			
+		count_dframe_clean<-count_dframe[, c("plot1_stage", 
+			"count_pre", "nperday", "percent", "checked", "count_post", "time_days")]
+		colnames(count_dframe_clean)<-c("review_stage", "article_count_pre", "n_per_day",
+			"proportion_retained", "proportion_checked", "article_count_post", "time_days")
+		count_dframe_clean$n_per_day[1]<-NA
+		# output$table<-renderTable(count_dframe_clean) # for checking only
+		plot_data$p2<-count_dframe_clean
+		
 		output$plot_articles<-renderPlotly({
 			p<-plot_ly(
 				data = count_dframe,
@@ -364,8 +373,42 @@ server<-function(input, output, session){
 			)
 		})	
 		
-	}) # end observe
+		# downloads
+		output$download_table1 <- downloadHandler(
+			filename = "PredicTER_times_output.csv",
+			content = function(file){write.csv(plot_data$p1, file, row.names=FALSE)}
+		)
+		output$download_table2 <- downloadHandler(
+			filename = "PredicTER_days_output.csv",
+			content = function(file){write.csv(plot_data$p2, file, row.names=FALSE)}
+		)
+		
+	}) # end observe	
 	
+	# modals to view data
+	observeEvent(input$view_data_1, {
+	shiny::showModal(
+		shiny::modalDialog(
+			renderTable(plot_data$p1),
+			title="Table 1: Time taken per stage",
+			footer=shiny::modalButton("Close"),
+			size="m",
+			easyClose=FALSE
+		)
+	)})
+
+	observeEvent(input$view_data_2, {
+	shiny::showModal(
+		shiny::modalDialog(
+			renderTable(plot_data$p2),
+			title="Table 2: Article counts per stage",
+			footer=shiny::modalButton("Close"),
+			size="l",
+			easyClose=FALSE
+		)
+	)})
+				
+				
 	# pop-up windows (modals) to show help files
 	observeEvent(input$help_review_type, {
 		shiny::showModal(
