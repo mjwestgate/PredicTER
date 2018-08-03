@@ -9,17 +9,20 @@ library(shinydashboard)
 library(plotly)
 library(viridisLite)
 
-server<-function(input, output, session){
+server <- function(input, output, session){
 
-	options(warn=-1) # hide incompatibility between shiny and plotly
+	options(warn = -1) # hide incompatibility between shiny and plotly
 	# https://github.com/hrbrmstr/metricsgraphics/issues/49
 
 	# dynamic UI control
 	# set reactive values to show whether to display critical appraisal lines & selectors
-	show_ca_line <- reactiveValues(x = TRUE)# , value="65.4")
-	show_data_stages <- reactiveValues(x = TRUE)
-	ca_value <- list(x = "76.0")
-	ca_current_status <- list(x = FALSE)
+  add_critical_appraisal <- reactiveValues(status = TRUE)
+  add_data_stages <- reactiveValues(status = TRUE)
+  # note: the above two objects have to be separate so that changes to one do not impact the other
+  critical_appraisal <- reactiveValues(
+    live = FALSE,
+    value = "76.0"
+  )
 
 	# reactive values to store plot data and images
 	plot_data <- reactiveValues(
@@ -31,8 +34,8 @@ server<-function(input, output, session){
  	observeEvent(
  		input$tabs, {
 		if(any(input$tabs == "syst_map")){
-			show_ca_line$x <- FALSE
-			show_data_stages$x <- FALSE
+      add_critical_appraisal$status <- FALSE
+      add_data_stages$status <- FALSE
 			insertUI(
 				selector = "#placeholder_selector",
 				ui = tags$div(
@@ -48,44 +51,33 @@ server<-function(input, output, session){
 			)
 		}else{
 			removeUI(selector = "#ca_selector")
-			ca_value$x <- "76.0"
-			if(ca_current_status$x){
-				textInput(
-          inputId = "row7_appraisal_percent",
-          label = NULL,
-          value = ca_value$x
-        )
-			}else{
-				show_ca_line$x <- TRUE
+			critical_appraisal$value <- "76.0"
+			if(critical_appraisal$live == FALSE){
+        add_critical_appraisal$status <- TRUE
 			}
-			show_data_stages$x <- TRUE
+      add_data_stages$status <- TRUE
 		}
 	})
 
+  # when the user has selected 'systematic map' and the want to include CA, add it.
 	# link reactive values to state of include_ca
  	observeEvent(input$include_ca, {
 		if(input$include_ca == "Yes"){
-			ca_value$x <- "27.4"
-			if(ca_current_status$x){
-				updateTextInput(
-          session,
-          inputId = "row7_appraisal_percent",
-          value = ca_value$x
-        )
-			}else{
-				show_ca_line$x<-TRUE
-			}
+			critical_appraisal$value <- "27.4"
+      if(critical_appraisal$live == FALSE){
+        add_critical_appraisal$status <- TRUE
+      }
 		}else{
-			show_ca_line$x<-FALSE
+      add_critical_appraisal$status <- FALSE
 		}
 	})
 
 	# add or substract lines as required
 	observe({
 		# set options fow when critical appraisal is required (or not)
-		if(show_ca_line$x){
-			if(ca_current_status$x == FALSE){
-			    ca_current_status$x <- TRUE
+    if(add_critical_appraisal$status){
+			if(critical_appraisal$live == FALSE){
+			    critical_appraisal$live <- TRUE
 				# insert correct line
 			    insertUI(
 			      selector = '#placeholder_ca',
@@ -101,7 +93,7 @@ server<-function(input, output, session){
     							textInput(
                     inputId = "row7_appraisal_percent",
                     label = NULL,
-                    value = ca_value$x
+                    value = critical_appraisal$value
                   ),
     							textInput(
                     inputId = "row7_appraisal_checked",
@@ -117,7 +109,7 @@ server<-function(input, output, session){
 			}
 		}else{
 		 	removeUI(selector = "#critical_appraisal")
-		 	ca_current_status$x <- FALSE
+		 	critical_appraisal$live <- FALSE
 		}
 	})
 
@@ -125,7 +117,7 @@ server<-function(input, output, session){
 	# either show_ca_line or show_data_stages triggers both; hence separate here.
 	observe({
 		 # ditto for data extraction and preparation (SRs only)
-		 if(show_data_stages$x){
+     if(add_data_stages$status){
 		    insertUI(
 		      selector = '#placeholder_SRs',
 		      ui = tags$div(
@@ -178,7 +170,7 @@ server<-function(input, output, session){
 	})
 
 	output$review_type_text <- renderUI({
-		if(any(input$tabs=="syst_map")){
+		if(any(input$tabs == "syst_map")){
 			actionLink(
         inputId = "help_review_type",
         label = "Currently selected: Systematic Map"
@@ -194,7 +186,7 @@ server<-function(input, output, session){
 	# update default values depending on whether we have a systematic map or a systematic review
 	# note: only those values that differ between SRs and SMs are updated
 	observeEvent(input$tabs, {
-		if(any(input$tabs=="syst_review")){
+		if(any(input$tabs == "syst_review")){
 			updateTextInput(session,
         inputId = "n_search",
         value = "11786"
@@ -326,10 +318,12 @@ server<-function(input, output, session){
 		# ensure ordering is correct
 		count_dframe$row_order <- c(1:nrow(count_dframe))
 		count_dframe$row_label <- paste0("row", count_dframe$row_order)
-		if(show_ca_line$x == FALSE){
+
+    # subset to relevant content
+    if(add_critical_appraisal$status == FALSE){
 			count_dframe <- count_dframe[-which(count_dframe$row_label == "row7"), ]
 		}
-		if(show_data_stages$x == FALSE){
+    if(add_data_stages$status == FALSE){
 			exclude_rows <- which(
         grepl("^row[8-9]", count_dframe$row_label, perl = TRUE)
       )
@@ -366,7 +360,7 @@ server<-function(input, output, session){
 		)
 
 		# create a grouping dframe for arranging colors in plot
-		group_lookup<-data.frame(
+		group_lookup <- data.frame(
 			stage = c(
 				"Administration", "Planning time", "Protocol development",
 				"Searching (academic)", "Searching (grey)", "Checking bibliographies",
@@ -403,8 +397,6 @@ server<-function(input, output, session){
     time_total <- sum(count_dframe$time_days[2:5]/count_dframe$checked[2:5])
     n_articles_total <- count_dframe$count_post[1]
     time_dframe$value[6] <- (time_total / n_articles_total) * n_new_refs
-		# counts_duplicates <- as.numeric(input$n_bib) * 50 #  * c(1, 0.192)
-		# time_dframe$value[6] <- sum(counts_duplicates / count_dframe$nperday[2:3])
 
 		# calculate administration time
 		time_dframe$value[1] <- sum(time_dframe$value) * as.numeric(input$pc_admin) * 0.01
@@ -421,6 +413,18 @@ server<-function(input, output, session){
 			labels = c("Planning", "Searching", "Screening", "DEAS", "Reporting")
     )
 		time_dframe$caption <- paste0(round(time_dframe$value, 1), " days")
+
+    # for systematic maps, remove 'synthesis' stage from the dataset
+    if(all(time_dframe$value > 0) == FALSE){
+      time_dframe <- time_dframe[which(time_dframe$value > 0), ]
+      time_dframe$y <- factor(
+        rev(as.numeric(time_dframe$y)),
+        levels = as.numeric(time_dframe$y),
+        labels = rev(as.character(time_dframe$y))
+      )
+    }
+
+    # save a 'clean' version for user
 		time_dframe_clean <- time_dframe[, c("stage", "group_factor", "value")]
 		colnames(time_dframe_clean) <- c("stage", "stage_group", "time_days")
 		plot_data$p1 <- time_dframe_clean
@@ -445,10 +449,16 @@ server<-function(input, output, session){
 				orientation = "h"
 			) %>%
 			layout(
-				xaxis = list(title="Number of Days"),
-				yaxis = list(title=""),
+				xaxis = list(title = "Number of Days"),
+				yaxis = list(title = ""),
 				autosize = TRUE,
-				margin = list(l=150, r=10, b=50, t=10, pad=4)
+				margin = list(
+          l = 150,
+          r = 10,
+          b = 50,
+          t = 10,
+          pad = 4
+        )
 			)
 			p
 		})
@@ -488,7 +498,13 @@ server<-function(input, output, session){
 				),
 				yaxis = list(title = ""),
 				autosize = TRUE,
-				margin = list(l=150, r=10, b=50, t=10, pad=4)
+				margin = list(
+          l = 150,
+          r = 10,
+          b = 50,
+          t = 10,
+          pad = 4
+        )
 			)
 			p
 		})
@@ -509,17 +525,25 @@ server<-function(input, output, session){
 				color = "black"
 			)
 		})
+
 		output$fte_box <- renderValueBox({
 			valueBox(
-				value = paste0(round(sum(time_dframe$value), 0), " days"),
+				value = paste0(
+          round(sum(time_dframe$value), 0),
+          " days"
+        ),
 				subtitle = "Full-Time Equivalent",
 				icon = icon("calendar-minus-o"),
 				color = "black"
 			)
 		})
+
 		output$admin_box <- renderValueBox({
 			valueBox(
-				value = paste0(round(time_dframe$value[1], 0), " days"),
+				value = paste0(
+          round(time_dframe$value[1], 0),
+          " days"
+        ),
 				subtitle = "Administration",
 				icon = icon("calendar-plus-o"),
 				color = "black"
@@ -529,37 +553,51 @@ server<-function(input, output, session){
 		# downloads
 		output$download_table1 <- downloadHandler(
 			filename = "PredicTER_times_output.csv",
-			content = function(file){write.csv(plot_data$p1, file, row.names=FALSE)}
+			content = function(file){
+        write.csv(
+          plot_data$p1,
+          file,
+          row.names = FALSE
+        )
+      }
 		)
 		output$download_table2 <- downloadHandler(
 			filename = "PredicTER_days_output.csv",
-			content = function(file){write.csv(plot_data$p2, file, row.names=FALSE)}
+			content = function(file){
+        write.csv(
+          plot_data$p2,
+          file,
+          row.names = FALSE
+        )
+      }
 		)
 
 	}) # end observe
 
 	# modals to view data
 	observeEvent(input$view_data_1, {
-	shiny::showModal(
-		shiny::modalDialog(
-			renderTable(plot_data$p1),
-			title = "Table 1: Time taken per stage",
-			footer = shiny::modalButton("Close"),
-			size = "m",
-			easyClose = FALSE
-		)
-	)})
+  	shiny::showModal(
+  		shiny::modalDialog(
+  			renderTable(plot_data$p1),
+  			title = "Table 1: Time taken per stage",
+  			footer = shiny::modalButton("Close"),
+  			size = "m",
+  			easyClose = FALSE
+  		)
+  	)
+  })
 
 	observeEvent(input$view_data_2, {
-	shiny::showModal(
-		shiny::modalDialog(
-			renderTable(plot_data$p2),
-			title = "Table 2: Article counts per stage",
-			footer = shiny::modalButton("Close"),
-			size = "l",
-			easyClose = FALSE
-		)
-	)})
+  	shiny::showModal(
+  		shiny::modalDialog(
+  			renderTable(plot_data$p2),
+  			title = "Table 2: Article counts per stage",
+  			footer = shiny::modalButton("Close"),
+  			size = "l",
+  			easyClose = FALSE
+  		)
+  	)
+  })
 
 
 	# pop-up windows (modals) to show help files
@@ -576,6 +614,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$help_planning, {
 		shiny::showModal(
 			shiny::modalDialog(
@@ -589,6 +628,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$help_searching, {
 		shiny::showModal(
 			shiny::modalDialog(
@@ -602,6 +642,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$help_screening, {
 		shiny::showModal(
 			shiny::modalDialog(
@@ -615,6 +656,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$help_deas, {
 		if(any(input$tabs=="syst_review")){
       deas_help <- "4_DEAS_SR_help_text.txt"
@@ -633,6 +675,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$help_reporting, {
 		shiny::showModal(
 			shiny::modalDialog(
@@ -646,6 +689,7 @@ server<-function(input, output, session){
       )
     )
   })
+
 	observeEvent(input$about, {
 		shiny::showModal(
 			shiny::modalDialog(
