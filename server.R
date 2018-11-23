@@ -9,6 +9,17 @@ library(shinydashboard)
 library(plotly)
 library(viridisLite)
 
+safe_numeric <- function(x){
+  y <- gsub("[[:alpha:]]", "", as.character(x), perl = TRUE)
+  as.numeric(
+    sapply(y, function(a){
+      if(nchar(a) == 0){1
+      }else{a}
+    })
+  )
+}
+
+
 server <- function(input, output, session){
 
 	options(warn = -1) # hide incompatibility between shiny and plotly
@@ -293,7 +304,7 @@ server <- function(input, output, session){
 		initial_dframe <- data.frame(
 			checked = c(0),
 			nperday = c(1),
-			percent = as.numeric(input$unique_percent)
+			percent = safe_numeric(input$unique_percent)
     )
 		count_dframe <- as.data.frame(
       rbind(initial_dframe, count_dframe),
@@ -305,7 +316,7 @@ server <- function(input, output, session){
 
 		# calculate number of articles, and time taken to process them
 		count_dframe$cumulative_percent <- cumprod(count_dframe$percent)
-		n_initial <- as.numeric(input$n_search) # + (50 * as.numeric(input$n_bib))
+		n_initial <- safe_numeric(input$n_search) # + (50 * safe_numeric(input$n_bib))
 		n_articles <- round(count_dframe$cumulative_percent * n_initial, 0)
 		count_dframe$count_pre <- c(
       round(n_initial, 0),
@@ -313,7 +324,7 @@ server <- function(input, output, session){
     )
 		count_dframe$count_post <- n_articles
 		count_dframe$time_days <- (count_dframe$count_pre * count_dframe$checked) / count_dframe$nperday
-		count_dframe$time_days[1] <- as.numeric(input$unique_time)
+		count_dframe$time_days[1] <- safe_numeric(input$unique_time)
 
 		# ensure ordering is correct
 		count_dframe$row_order <- c(1:nrow(count_dframe))
@@ -345,16 +356,16 @@ server <- function(input, output, session){
 				"Synthesis", "Report writing", "Communication", "Meetings"),
 			value = c(
 				0,
-				as.numeric(input$planning),
-				as.numeric(input$protocol),
-				as.numeric(input$n_databases) / as.numeric(input$n_db_perday),
-				(as.numeric(input$n_grey) / as.numeric(input$n_grey_perday)) +
-					as.numeric(input$time_grey_add),
+				safe_numeric(input$planning),
+				safe_numeric(input$protocol),
+				safe_numeric(input$n_databases) / safe_numeric(input$n_db_perday),
+				(safe_numeric(input$n_grey) / safe_numeric(input$n_grey_perday)) +
+					safe_numeric(input$time_grey_add),
 				0,
-				as.numeric(input$synthesis),
-				as.numeric(input$report),
-				as.numeric(input$comms),
-				as.numeric(input$meetings)
+				safe_numeric(input$synthesis),
+				safe_numeric(input$report),
+				safe_numeric(input$comms),
+				safe_numeric(input$meetings)
 			),
 			stringsAsFactors = FALSE
 		)
@@ -393,13 +404,13 @@ server <- function(input, output, session){
     )
 
 		# calculate time on checking bibliographies for new entries
-    n_new_refs <- as.numeric(input$n_bib) * 50
+    n_new_refs <- safe_numeric(input$n_bib) * 50
     time_total <- sum(count_dframe$time_days[2:5]/count_dframe$checked[2:5])
     n_articles_total <- count_dframe$count_post[1]
     time_dframe$value[6] <- (time_total / n_articles_total) * n_new_refs
 
 		# calculate administration time
-		time_dframe$value[1] <- sum(time_dframe$value) * as.numeric(input$pc_admin) * 0.01
+		time_dframe$value[1] <- sum(time_dframe$value, na.rm = TRUE) * safe_numeric(input$pc_admin) * 0.01
 		time_dframe <- merge(
       time_dframe,
       group_lookup,
@@ -414,8 +425,10 @@ server <- function(input, output, session){
     )
 		time_dframe$caption <- paste0(round(time_dframe$value, 1), " days")
 
+    # for systematic maps, remove 'synthesis' stage
+    # time_dframe <- time_dframe[which(time_dframe$time_days > 0), ]
     # for systematic maps, remove 'synthesis' stage from the dataset
-    if(all(time_dframe$value > 0) == FALSE){
+    if(all(time_dframe$value > 0, na.rm = TRUE) == FALSE){
       time_dframe <- time_dframe[which(time_dframe$value > 0), ]
       time_dframe$y <- factor(
         rev(as.numeric(time_dframe$y)),
@@ -513,12 +526,15 @@ server <- function(input, output, session){
 		output$total_box <- renderValueBox({
 			valueBox(
 				value = paste0(
-          round(sum(time_dframe$value)/as.numeric(input$fte), 0),
+          round(
+            sum(time_dframe$value, na.rm = TRUE) / safe_numeric(input$fte),
+            0
+          ),
           " days"
         ),
 				subtitle =  paste0(
           "Total Time Taken (",
-          round(as.numeric(input$fte), 1),
+          round(safe_numeric(input$fte), 1),
           " FTE)"
         ),
 				icon = icon("calendar"),
@@ -529,7 +545,7 @@ server <- function(input, output, session){
 		output$fte_box <- renderValueBox({
 			valueBox(
 				value = paste0(
-          round(sum(time_dframe$value), 0),
+          round(sum(time_dframe$value, na.rm = TRUE), 0),
           " days"
         ),
 				subtitle = "Full-Time Equivalent",
@@ -658,7 +674,7 @@ server <- function(input, output, session){
   })
 
 	observeEvent(input$help_deas, {
-		if(any(input$tabs=="syst_review")){
+		if(any(input$tabs == "syst_review")){
       deas_help <- "4_DEAS_SR_help_text.txt"
 		}else{
       deas_help <- "4_DEAS_SM_help_text.txt"
