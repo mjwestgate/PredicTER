@@ -290,22 +290,53 @@ server <- function(input, output, session){
       do.call(rbind, strsplit(lookup_names, "_")),
       stringsAsFactors = FALSE
     )
+
+		
 		colnames(lookup_dframe) <- c("row", "stage", "column")
 		lookup_dframe$value <- unlist(lapply(lookup_names,
       function(a){input[[a]]}
     ))
+		lookup_dframe<-lookup_dframe[order(lookup_dframe$row, lookup_dframe$column),] # unsorted the df looks like this:
+		
+		# checked nperday percent
+		# row2    14.6      10     854
+		# row3     192    25.0      10
+		# row4   150.9     171       0
+		# row5      10    21.4      44
+		# row6   100.0    16.7       0
+		# row7    11.7       0    76.0
+		# row8   100.0       0     6.9
+		# row9    59.2      24       0
+		
+		#sorted the daf looks like this:
+		
+		# checked nperday percent
+		# row2      10     854    14.6
+		# row3      10     192    25.0
+		# row4       0     171   150.9
+		# row5      10      44    21.4
+		# row6       0    16.7   100.0
+		# row7       0    11.7    76.0
+		# row8       0     6.9   100.0
+		# row9       0      24    59.2
+		
+		
 
-		# convert to data.frame
+		
+		# convert to data.frame 
 		count_dframe <- as.data.frame(
 			do.call(rbind, split(lookup_dframe[, "value"], lookup_dframe$row)),
 			stringsAsFactors = FALSE
     )
+
+		
 		colnames(count_dframe) <- c("checked", "nperday", "percent")
 		initial_dframe <- data.frame(
 			checked = c(0),
 			nperday = c(1),
 			percent = safe_numeric(input$unique_percent)
     )
+	
 		count_dframe <- as.data.frame(
       rbind(initial_dframe, count_dframe),
       stringsAsFactors=FALSE
@@ -313,6 +344,8 @@ server <- function(input, output, session){
 		count_dframe$checked <- 1 + (as.numeric(count_dframe$checked) * 0.01)
 		count_dframe$nperday <- as.numeric(count_dframe$nperday)
 		count_dframe$percent <- as.numeric(count_dframe$percent) * 0.01
+		
+	
 
 		# calculate number of articles, and time taken to process them
 		count_dframe$cumulative_percent <- cumprod(count_dframe$percent)
@@ -436,6 +469,8 @@ server <- function(input, output, session){
         labels = rev(as.character(time_dframe$y))
       )
     }
+		
+	
 
     # save a 'clean' version for user
 		time_dframe_clean <- time_dframe[, c("stage", "group_factor", "value")]
