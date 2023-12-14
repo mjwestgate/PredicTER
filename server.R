@@ -584,7 +584,7 @@ server <- function(input, output, session){
           " days"
         ),
 				subtitle = "Full-Time Equivalent",
-				icon = icon("calendar-minus-o"),
+				icon = icon("calendar-minus"),
 				color = "black"
 			)
 		})
@@ -596,7 +596,7 @@ server <- function(input, output, session){
           " days"
         ),
 				subtitle = "Administration",
-				icon = icon("calendar-plus-o"),
+				icon = icon("calendar-plus"),
 				color = "black"
 			)
 		})
